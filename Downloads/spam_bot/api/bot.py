@@ -6,7 +6,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 # Vô hiệu hóa cảnh báo SSL (chỉ nên dùng khi chắc chắn URL an toàn)
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'  # ⚠️ Thay bằng token bot thật
+BOT_TOKEN = '8374042933:AAGmPBOfr_EOxtwVJMdFqziQLAwTZy1I4-Q'  # ⚠️ Thay bằng token bot thật
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Xin chào! Gõ /run để chạy đoạn mã.")
