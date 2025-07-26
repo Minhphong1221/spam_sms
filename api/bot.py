@@ -1,9 +1,9 @@
 from telegram import Update, Chat
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import concurrent.futures
-import threading
-from spam_sms import *
+import asyncio
 import datetime
+from spam_sms import *
 
 SPAM_FUNCTIONS = [
     v for k, v in globals().items()
@@ -35,6 +35,30 @@ def call_with_log(func, phone):
     except Exception as e:
         print(f"❌ Lỗi khi gọi {func.__name__}(): {e}")
 
+async def spam_runner(context, user_id, full_name, phone, times, chat_id):
+    try:
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            for _ in range(times):
+                if user_stop_flags.get(user_id, False):
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text=f"⛔ <b>{full_name}</b> đã dừng spam.",
+                        parse_mode='HTML'
+                    )
+                    return
+                for func in SPAM_FUNCTIONS:
+                    if callable(func):
+                        await asyncio.get_event_loop().run_in_executor(executor, call_with_log, func, phone)
+
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"✅ <b>{full_name}</b> đã spam xong số <b>{phone}</b>.",
+            parse_mode='HTML'
+        )
+
+    except Exception as e:
+        await context.bot.send_message(chat_id=chat_id, text=f"❌ Lỗi: {e}")
+
 async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_group_chat(update):
         await update.message.reply_text("⚠️ Bot chỉ sử dụng được trong nhóm.")
@@ -45,10 +69,13 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     full_name = user.full_name
     chat_id = update.effective_chat.id
 
+    if len(context.args) < 1:
+        await update.message.reply_text("❌ Sai cú pháp.\n👉 Dùng: /spam <số_điện_thoại> <số_lần>")
+        return
+
     try:
-        args = context.args
-        phone = args[0]
-        times = int(args[1]) if len(args) > 1 else 1
+        phone = context.args[0]
+        times = int(context.args[1]) if len(context.args) > 1 else 1
 
         if not check_daily_limit(user_id, times):
             await context.bot.send_message(chat_id=chat_id, text=f"❌ <b>{full_name}</b> đã vượt giới hạn {DAILY_LIMIT} lần/ngày!", parse_mode='HTML')
@@ -58,22 +85,10 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_message(chat_id=chat_id, text=f"🚀 <b>{full_name}</b> đang spam <b>{phone}</b> ({times} lần).", parse_mode='HTML')
 
-        def run_spam():
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                for _ in range(times):
-                    if user_stop_flags.get(user_id, False):
-                        context.bot.send_message(chat_id=chat_id, text=f"⛔ <b>{full_name}</b> đã dừng spam.", parse_mode='HTML')
-                        return
-                    for func in SPAM_FUNCTIONS:
-                        if callable(func):
-                            executor.submit(call_with_log, func, phone)
+        asyncio.create_task(spam_runner(context, user_id, full_name, phone, times, chat_id))
 
-            context.bot.send_message(chat_id=chat_id, text=f"✅ <b>{full_name}</b> đã spam xong số <b>{phone}</b>.", parse_mode='HTML')
-
-        threading.Thread(target=run_spam).start()
-
-    except (IndexError, ValueError):
-        await update.message.reply_text("❌ Sai cú pháp.\n👉 Dùng: /spam <số_điện_thoại> <số_lần>")
+    except ValueError:
+        await update.message.reply_text("❌ Số lần phải là số nguyên.")
 
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -97,7 +112,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🤖 <b>Bot spam SMS Minh Phong</b>\n"
         "📱 <b>Lệnh:</b>\n"
-        "/spam <sdt> <solan> - spam\n"
+        "/spam &lt;sdt&gt; &lt;solan&gt; - spam\n"
         "/stop - dừng\n"
         "/check - xem số lần\n\n"
         "📞 Zalo: 0813539155\n"
