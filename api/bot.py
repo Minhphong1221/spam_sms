@@ -9,8 +9,8 @@ import os
 import nest_asyncio
 
 # === Bot Token & Webhook ===
-TOKEN = "YOUR_BOT_TOKEN"
-DOMAIN = "https://your-project-name.up.railway.app"  # Railway domain
+TOKEN = "8374042933:AAEDyyxEUxHR8ebGSUJRjrn7XEctT_zhYL0"
+DOMAIN = "https://empowering-appreciation-production-9e9b.up.railway.app"  # Railway domain
 WEBHOOK_PATH = f"/{TOKEN}"
 WEBHOOK_URL = f"{DOMAIN}{WEBHOOK_PATH}"
 
