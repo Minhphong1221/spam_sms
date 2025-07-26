@@ -6,16 +6,19 @@ import datetime
 from flask import Flask, request
 from telegram import Update, Chat
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from spam_sms import *
+from spam_sms import *  # Import các hàm spam
 
-TOKEN = os.environ.get("BOT_TOKEN", "8374042933:AAEDyyxEUxHR8ebGSUJRjrn7XEctT_zhYL0")
-DOMAIN = os.environ.get("DOMAIN", "https://la3szhgl.up.railway.app")  # Railway domain
+# ==== CẤU HÌNH BOT ====
+TOKEN = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+DOMAIN = os.environ.get("DOMAIN", "https://your-app-name.up.railway.app")
 WEBHOOK_PATH = f"/{TOKEN}"
 WEBHOOK_URL = f"{DOMAIN}{WEBHOOK_PATH}"
 
+# ==== TẠO ỨNG DỤNG ====
 flask_app = Flask(__name__)
 app = ApplicationBuilder().token(TOKEN).build()
 
+# ==== CẤU HÌNH SPAM ====
 SPAM_FUNCTIONS = [v for k, v in globals().items() if callable(v) and not k.startswith("__") and k.islower()]
 user_stop_flags = {}
 daily_usage = {}
@@ -35,8 +38,10 @@ def check_daily_limit(user_id, times):
     return True
 
 def call_with_log(func, phone):
-    try: func(phone)
-    except Exception as e: print(f"Lỗi khi gọi {func.__name__}: {e}")
+    try:
+        func(phone)
+    except Exception as e:
+        print(f"Lỗi khi gọi {func.__name__}: {e}")
 
 async def spam_runner(context, user_id, full_name, phone, times, chat_id):
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -54,7 +59,8 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     full_name = update.effective_user.full_name
     chat_id = update.effective_chat.id
-    if len(context.args) < 1: return await update.message.reply_text("❌ Sai cú pháp: /spam <sdt> <solan>")
+    if len(context.args) < 1:
+        return await update.message.reply_text("❌ Sai cú pháp: /spam <sdt> <solan>")
     try:
         phone = context.args[0]
         times = int(context.args[1]) if len(context.args) > 1 else 1
@@ -83,7 +89,7 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🤖 Bot spam SMS\n/spam <sdt> <solan>\n/stop\n/check")
 
-# Thêm command vào bot
+# ==== ĐĂNG KÝ COMMAND ====
 app.add_handler(CommandHandler("start", start_command))
 app.add_handler(CommandHandler("spam", spam_command))
 app.add_handler(CommandHandler("stop", stop_command))
@@ -96,8 +102,7 @@ def index():
 
 @flask_app.route("/set_webhook")
 def set_webhook():
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(app.bot.set_webhook(WEBHOOK_URL))
+    asyncio.get_event_loop().run_until_complete(app.bot.set_webhook(WEBHOOK_URL))
     return f"✅ Webhook đã thiết lập: {WEBHOOK_URL}"
 
 @flask_app.route(WEBHOOK_PATH, methods=["POST"])
@@ -106,8 +111,9 @@ def webhook():
     asyncio.get_event_loop().create_task(app.process_update(update))
     return "OK"
 
-# ==== START ====
+# ==== KHỞI CHẠY ====
 if __name__ == "__main__":
     nest_asyncio.apply()
     port = int(os.environ.get("PORT", 8080))
+    asyncio.get_event_loop().run_until_complete(app.initialize())
     flask_app.run(host="0.0.0.0", port=port)
