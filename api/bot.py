@@ -3,24 +3,24 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import concurrent.futures
 import asyncio
 import datetime
-from spam_sms import *
+from spam_sms import *  # <-- file này bạn phải có
 from flask import Flask, request
 import os
 import nest_asyncio
 
-# === Bot Token & Webhook ===
+# === Cấu hình bot & webhook ===
 TOKEN = "8374042933:AAEDyyxEUxHR8ebGSUJRjrn7XEctT_zhYL0"
-DOMAIN = "https://empowering-appreciation-production-9e9b.up.railway.app"  # Railway domain
+DOMAIN = "https://empowering-appreciation-production-9e9b.up.railway.app"
 WEBHOOK_PATH = f"/{TOKEN}"
 WEBHOOK_URL = f"{DOMAIN}{WEBHOOK_PATH}"
 
-# === Flask app ===
+# === Flask App ===
 flask_app = Flask(__name__)
 
-# === Khởi tạo Telegram Bot ===
+# === Bot Telegram ===
 app = ApplicationBuilder().token(TOKEN).build()
 
-# === Spam function ===
+# === Các hàm spam từ spam_sms.py (đảm bảo bạn đã định nghĩa đúng) ===
 SPAM_FUNCTIONS = [
     v for k, v in globals().items()
     if callable(v) and not k.startswith("__") and k.islower()
@@ -49,7 +49,7 @@ def call_with_log(func, phone):
         print(f"📨 Gọi {func.__name__}({phone})")
         func(phone)
     except Exception as e:
-        print(f"❌ Lỗi khi gọi {func.__name__}(): {e}")
+        print(f"❌ Lỗi {func.__name__}: {e}")
 
 async def spam_runner(context, user_id, full_name, phone, times, chat_id):
     try:
@@ -66,6 +66,7 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
     except Exception as e:
         await context.bot.send_message(chat_id=chat_id, text=f"❌ Lỗi: {e}")
 
+# === Các lệnh bot
 async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_group_chat(update):
         await update.message.reply_text("⚠️ Bot chỉ dùng trong nhóm.")
@@ -122,7 +123,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
 
-# === Đăng ký các lệnh
+# === Đăng ký lệnh bot
 app.add_handler(CommandHandler("start", start_command))
 app.add_handler(CommandHandler("spam", spam_command))
 app.add_handler(CommandHandler("stop", stop_command))
@@ -130,14 +131,8 @@ app.add_handler(CommandHandler("check", check_command))
 
 # === Route test
 @flask_app.route("/")
-def index():
+def home():
     return "🤖 Bot đang chạy..."
-
-# === Route để set webhook
-@flask_app.route("/set_webhook")
-async def set_webhook():
-    await app.bot.set_webhook(WEBHOOK_URL)
-    return f"✅ Webhook đã được thiết lập: {WEBHOOK_URL}"
 
 # === Route nhận webhook từ Telegram
 @flask_app.post(WEBHOOK_PATH)
@@ -146,7 +141,18 @@ async def telegram_webhook():
     await app.process_update(update)
     return "OK"
 
+# === Route để gọi set webhook bằng trình duyệt (tùy chọn)
+@flask_app.route("/set_webhook")
+async def manual_set_webhook():
+    await app.bot.set_webhook(WEBHOOK_URL)
+    return f"Webhook đã thiết lập: {WEBHOOK_URL}"
+
 # === Chạy app
+async def main():
+    await app.bot.set_webhook(WEBHOOK_URL)
+    print(f"✅ Webhook đã set: {WEBHOOK_URL}")
+    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+
 if __name__ == "__main__":
     nest_asyncio.apply()
-    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    asyncio.run(main())
