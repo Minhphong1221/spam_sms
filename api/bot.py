@@ -125,7 +125,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("stop", stop_command))
     app.add_handler(CommandHandler("check", check_command))
 
-    print("🤖 Bot đang chạy (polling)...")
-    app.run_polling()
+    print("🤖 Bot đang chạy...")
+   
     app.run_polling(drop_pending_updates=True)
 
