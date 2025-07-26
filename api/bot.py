@@ -116,7 +116,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     "/stop - dừng\n"
     "/check - xem số lần\n\n"
     "📞 Zalo: 0813539155\n"
-    "📘 FB: https://www.facebook.com/minh.phong.914984?locale=vi_VN\n",
+    "📘 FB: Minh Phong\n",
     parse_mode='HTML'
 )
 
