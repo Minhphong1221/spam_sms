@@ -4,6 +4,16 @@ import concurrent.futures
 import asyncio
 import datetime
 from spam_sms import *
+from flask import Flask, request
+import os
+import nest_asyncio
+
+# ==== Thay thế bằng thông tin thật của bạn ====
+TOKEN = "8374042933:AAHbaUMkbxPaqp4EDpxdilfmGbUFqhPFmyA"
+DOMAIN = "https://empowering-appreciation-production-9e9b.up.railway.app"
+WEBHOOK_PATH = f"/{TOKEN}"
+WEBHOOK_URL = f"{DOMAIN}{WEBHOOK_PATH}"
+# ==============================================
 
 SPAM_FUNCTIONS = [
     v for k, v in globals().items()
@@ -40,21 +50,13 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             for _ in range(times):
                 if user_stop_flags.get(user_id, False):
-                    await context.bot.send_message(
-                        chat_id=chat_id,
-                        text=f"⛔ <b>{full_name}</b> đã dừng spam.",
-                        parse_mode='HTML'
-                    )
+                    await context.bot.send_message(chat_id=chat_id, text=f"⛔ <b>{full_name}</b> đã dừng spam.", parse_mode='HTML')
                     return
                 for func in SPAM_FUNCTIONS:
                     if callable(func):
                         await asyncio.get_event_loop().run_in_executor(executor, call_with_log, func, phone)
 
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=f"✅ <b>{full_name}</b> đã spam xong số <b>{phone}</b>.",
-            parse_mode='HTML'
-        )
+        await context.bot.send_message(chat_id=chat_id, text=f"✅ <b>{full_name}</b> đã spam xong số <b>{phone}</b>.", parse_mode='HTML')
 
     except Exception as e:
         await context.bot.send_message(chat_id=chat_id, text=f"❌ Lỗi: {e}")
@@ -109,29 +111,41 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text=f"📊 {update.effective_user.full_name} đã spam {count} lần hôm nay.\n🔋 Còn lại: {remaining} lần.", parse_mode='HTML')
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-   await update.message.reply_text(
-    "🤖 <b>Bot spam SMS Minh Phong</b>\n"
-    "📱 <b>Lệnh:</b>\n"
-    "/spam &lt;sdt&gt; &lt;solan&gt; - spam\n"
-    "/stop - dừng\n"
-    "/check - xem số lần\n\n"
-    "📞 Zalo: 0813539155\n"
-    "📘 FB: Minh Phong\n"
-    "<b>Bot By VŨ MINH PHONG<b/>\n",
-    parse_mode='HTML'
-)
+    await update.message.reply_text(
+        "🤖 <b>Bot spam SMS Minh Phong</b>\n"
+        "📱 <b>Lệnh:</b>\n"
+        "/spam <sdt> <solan> - spam\n"
+        "/stop - dừng\n"
+        "/check - xem số lần\n\n"
+        "📞 Zalo: 0813539155\n"
+        "📘 FB: Minh Phong\n"
+        "<b>Bot By VŨ MINH PHONG</b>",
+        parse_mode='HTML'
+    )
 
+# -------- Webhook Setup --------
+app = ApplicationBuilder().token(TOKEN).build()
+app.add_handler(CommandHandler("start", start_command))
+app.add_handler(CommandHandler("spam", spam_command))
+app.add_handler(CommandHandler("stop", stop_command))
+app.add_handler(CommandHandler("check", check_command))
 
-def main():
-    app = ApplicationBuilder().token("8374042933:AAHbaUMkbxPaqp4EDpxdilfmGbUFqhPFmyA").build()
+flask_app = Flask(__name__)
 
-    app.add_handler(CommandHandler("start", start_command))
-    app.add_handler(CommandHandler("spam", spam_command))
-    app.add_handler(CommandHandler("stop", stop_command))
-    app.add_handler(CommandHandler("check", check_command))
+@flask_app.route("/")
+def home():
+    return "🤖 Bot webhook đang chạy."
 
-    print("🤖 Bot đã chạy...")
-    app.run_polling()
+@flask_app.post(WEBHOOK_PATH)
+async def webhook():
+    update = Update.de_json(request.get_json(force=True), app.bot)
+    await app.process_update(update)
+    return "OK"
 
-if __name__ == '__main__':
-    main()
+async def setup_webhook():
+    await app.bot.set_webhook(WEBHOOK_URL)
+
+if __name__ == "__main__":
+    nest_asyncio.apply()
+    asyncio.get_event_loop().run_until_complete(setup_webhook())
+    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
