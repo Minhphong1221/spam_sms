@@ -14,6 +14,12 @@ DOMAIN = "https://empowering-appreciation-production-9e9b.up.railway.app"  # Rai
 WEBHOOK_PATH = f"/{TOKEN}"
 WEBHOOK_URL = f"{DOMAIN}{WEBHOOK_PATH}"
 
+# === Flask app ===
+flask_app = Flask(__name__)
+
+# === Khởi tạo Telegram Bot ===
+app = ApplicationBuilder().token(TOKEN).build()
+
 # === Spam function ===
 SPAM_FUNCTIONS = [
     v for k, v in globals().items()
@@ -116,32 +122,31 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
 
-# ---------- Webhook setup ----------
-app = ApplicationBuilder().token(TOKEN).build()
+# === Đăng ký các lệnh
 app.add_handler(CommandHandler("start", start_command))
 app.add_handler(CommandHandler("spam", spam_command))
 app.add_handler(CommandHandler("stop", stop_command))
 app.add_handler(CommandHandler("check", check_command))
 
-flask_app = Flask(__name__)
-
+# === Route test
 @flask_app.route("/")
-def home():
-    return "🤖 Bot đang chạy."
+def index():
+    return "🤖 Bot đang chạy..."
 
+# === Route để set webhook
 @flask_app.route("/set_webhook")
 async def set_webhook():
     await app.bot.set_webhook(WEBHOOK_URL)
-    return f"Webhook set to {WEBHOOK_URL}"
+    return f"✅ Webhook đã được thiết lập: {WEBHOOK_URL}"
 
+# === Route nhận webhook từ Telegram
 @flask_app.post(WEBHOOK_PATH)
-async def webhook():
+async def telegram_webhook():
     update = Update.de_json(request.get_json(force=True), app.bot)
     await app.process_update(update)
     return "OK"
 
-# -------- Start server --------
+# === Chạy app
 if __name__ == "__main__":
     nest_asyncio.apply()
-    asyncio.get_event_loop().run_until_complete(set_webhook())
     flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
