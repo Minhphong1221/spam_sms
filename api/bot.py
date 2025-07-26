@@ -109,16 +109,17 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text=f"📊 {update.effective_user.full_name} đã spam {count} lần hôm nay.\n🔋 Còn lại: {remaining} lần.", parse_mode='HTML')
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🤖 <b>Bot spam SMS Minh Phong</b>\n"
-        "📱 <b>Lệnh:</b>\n"
-        "/spam &lt;sdt&gt; &lt;solan&gt; - spam\n"
-        "/stop - dừng\n"
-        "/check - xem số lần\n\n"
-        "📞 Zalo: 0813539155\n"
-        "📘 FB: Minh Phong\n",
-        parse_mode='HTML'
-    )
+   await update.message.reply_text(
+    "🤖 <b>Bot spam SMS Minh Phong</b>\n"
+    "📱 <b>Lệnh:</b>\n"
+    "/spam &lt;sdt&gt; &lt;solan&gt; - spam\n"
+    "/stop - dừng\n"
+    "/check - xem số lần\n\n"
+    "📞 Zalo: 0813539155\n"
+    "📘 FB: Minh Phong\n",
+    parse_mode='HTML'
+)
+
 
 def main():
     app = ApplicationBuilder().token("8374042933:AAHbaUMkbxPaqp4EDpxdilfmGbUFqhPFmyA").build()
