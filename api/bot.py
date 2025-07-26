@@ -6,7 +6,7 @@ from telegram import Update, Chat
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from spam_sms import *  # <-- Import các hàm spam từ spam_sms.py
 
-TOKEN = os.getenv("TOKEN")  # Lấy từ biến môi trường (an toàn hơn)
+TOKEN = os.getenv("8374042933:AAFq8KFtX5UypTOv04wIJsJ40pz2oEA0bj0")  # Lấy từ biến môi trường (an toàn hơn)
 
 bot_stopped = False  # Dừng toàn bộ bot
 user_stop_flags = {}  # Dừng cá nhân
