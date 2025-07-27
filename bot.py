@@ -25,7 +25,7 @@ if not TOKEN:
     exit(1)
 
 # Cấu hình admin
-ADMIN_IDS = [123456789]  # 👈 Thay 123456789 bằng user_id Telegram của admin
+ADMIN_IDS = [ 6065304736]  # 👈 Thay 123456789 bằng user_id Telegram của admin
 
 # Trạng thái người dùng
 user_stop_flags = defaultdict(bool)
