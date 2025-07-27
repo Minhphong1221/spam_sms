@@ -6,7 +6,7 @@ import logging
 from telegram import Update, Chat
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-from spam_sms1 import *  # Import tất cả API từ spam_sms1.py
+from spam_sms import *  # Import tất cả API từ spam_sms1.py
 
 # Bật logging
 logging.basicConfig(level=logging.INFO)
