@@ -20,7 +20,7 @@ if not TOKEN:
     exit(1)
 
 # 👑 ID admin
-ADMIN_IDS = [6594643149]
+ADMIN_IDS = [1087968824]
 
 # Giới hạn người dùng
 DAILY_LIMIT = 1000
