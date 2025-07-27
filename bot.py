@@ -222,9 +222,9 @@ def create_bot():
     app.add_handler(CommandHandler("reset", reset_command))
     app.add_handler(CommandHandler("id", id_command))
 
-    # Gợi ý lệnh trong Telegram
-    async def set_commands():
-        await app.bot.set_my_commands([
+    # ✅ Gợi ý lệnh Telegram (sửa đúng lỗi TypeError)
+    async def set_commands(application):
+        await application.bot.set_my_commands([
             BotCommand("start", "Bắt đầu bot"),
             BotCommand("spam", "Spam số điện thoại"),
             BotCommand("stop", "Dừng spam"),
@@ -233,6 +233,7 @@ def create_bot():
             BotCommand("id", "Lấy ID Telegram"),
             BotCommand("reset", "Reset lượt spam (admin)"),
         ])
+
     app.post_init = set_commands
 
     return app
