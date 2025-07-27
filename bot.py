@@ -97,8 +97,7 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if len(context.args) < 1:
-        await update.message.reply_text("❌ Sai cú pháp.
-👉 /spam <số_điện_thoại> <số_lần>")
+        await update.message.reply_text("❌ Sai cú pháp.👉 /spam <số_điện_thoại> <số_lần>")
         return
 
     try:
