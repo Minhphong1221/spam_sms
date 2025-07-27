@@ -149,8 +149,6 @@ async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML',
         disable_web_page_preview=True
     )
-
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text(
@@ -165,6 +163,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         logger.error(f"Lỗi khi gửi lệnh /start: {e}")
+
 
 
 def create_bot():
