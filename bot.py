@@ -64,7 +64,7 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
                 count += 1
 
         await context.bot.send_message(chat_id=chat_id,
-            text=f"✅ <b>{full_name}</b> đã gửi {count} API tới số <b>{phone}</b>.",
+            text=f"✅ <b>{full_name}</b> đã spam {count}  tới số <b>{phone}</b>.",
             parse_mode='HTML')
 
     except Exception as e:
