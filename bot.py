@@ -151,16 +151,21 @@ async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🤖 <b>Bot spam SMS</b>\n"
-        "/spam $L <số_lần> — spam SMS\n"
-        "/stop — dừng spam của bạn\n"
-        "/check — kiểm tra số lượt hôm nay\n"
-        "/ip — kiểm tra địa chỉ IP\n"
-        "📅 Giới hạn: 1000 lần/ngày\n"
-        "Bot By VŨ MINH PHONG",
-        parse_mode='HTML'
-    )
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        await update.message.reply_text(
+            "🤖 <b>Bot spam SMS</b>\n"
+            "/spam $L <số_lần> — spam SMS\n"
+            "/stop — dừng spam của bạn\n"
+            "/check — kiểm tra số lượt hôm nay\n"
+            "/ip — kiểm tra địa chỉ IP\n"
+            "📅 Giới hạn: 1000 lần/ngày\n"
+            "Bot By VŨ MINH PHONG",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Lỗi khi gửi lệnh /start: {e}")
+
 
 def create_bot():
     app = ApplicationBuilder().token(TOKEN).build()
