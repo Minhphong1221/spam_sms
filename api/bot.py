@@ -112,15 +112,15 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                    parse_mode='HTML')
 
 # --- /start ---
+# --- /start ---
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🤖 <b>Bot spam SMS</b>\n"
         "/spam &lt;sdt&gt; &lt;lần&gt; — spam SMS\n"
         "/stop — dừng spam của bạn\n"
         "/check — kiểm tra số lượt hôm nay\n"
         "📅 Giới hạn: 1000 lần/ngày\n"
-        "🌐 nhấn link bot kiểm tra IP: https://mphongdev-net.vercel.app/\n"
+        "🌐 Nhấn để kiểm tra IP: https://mphongdev-net.vercel.app/\n"
         "Bot By VŨ MINH PHONG",
         parse_mode='HTML'
     )
