@@ -2,14 +2,14 @@ import os
 import asyncio
 import datetime
 import concurrent.futures
-import logging  # 🔧 ĐÃ THÊM
+import logging
 from collections import defaultdict
 from telegram import Update, Chat
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-from spam_sms import *  # Import tất cả các hàm spam từ file spam_sms.py
+from spam_sms import *  # Import các hàm spam từ file spam_sms.py
 
-# Logging và ẩn log không cần thiết
+# Thiết lập logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -23,9 +23,9 @@ if not TOKEN:
     exit(1)
 
 # 👑 Danh sách ID admin
-ADMIN_IDS = [6594643149]  # 👈 Đổi ID admin tại đây
+ADMIN_IDS = [6594643149]  # 👈 Thay ID admin tại đây
 
-# Trạng thái & giới hạn
+# Trạng thái người dùng & giới hạn
 user_stop_flags = defaultdict(bool)
 daily_usage = defaultdict(lambda: {'date': str(datetime.date.today()), 'count': 0})
 DAILY_LIMIT = 1000
@@ -74,6 +74,7 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
                 index += 1
                 count += 1
                 await asyncio.sleep(0.3)
+
         await context.bot.send_message(
             chat_id=chat_id,
             text=f"✅ <b>{full_name}</b> đã spam {count} lần tới số <b>{phone}</b>.",
@@ -177,18 +178,18 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-await update.message.reply_text(
-    "🤖 <b>Bot spam SMS</b>\n"
-    "/spam &lt;số_điện_thoại&gt; &lt;số_lần&gt; — spam SMS\n"
-    "/stop — dừng spam của bạn\n"
-    "/check — kiểm tra số lượt hôm nay\n"
-    "/reset — (admin) reset lượt người dùng (reply tin nhắn)\n"
-    "/ip — kiểm tra địa chỉ IP\n"
-    "📅 Giới hạn: 1000 lần/ngày\n"
-    "Bot By VŨ MINH PHONG",
-    parse_mode='HTML'
-)
-
+    try:
+        await update.message.reply_text(
+            "🤖 <b>Bot spam SMS</b>\n"
+            "/spam &lt;sdt&gt; &lt;solan&gt; — spam SMS\n"
+            "/stop — dừng spam của bạn\n"
+            "/check — kiểm tra số lượt hôm nay\n"
+            "/reset — (admin) reset lượt người dùng (reply tin nhắn)\n"
+            "/ip — kiểm tra địa chỉ IP\n"
+            "📅 Giới hạn: 1000 lần/ngày\n"
+            "Bot By VŨ MINH PHONG",
+            parse_mode='HTML'
+        )
     except Exception as e:
         logger.error(f"Lỗi khi gửi lệnh /start: {e}")
 
@@ -199,5 +200,5 @@ def create_bot():
     app.add_handler(CommandHandler("stop", stop_command))
     app.add_handler(CommandHandler("check", check_command))
     app.add_handler(CommandHandler("ip", ip_command))
-    app.add_handler(CommandHandler("reset", reset_command))  # 👑 Lệnh dành cho admin
+    app.add_handler(CommandHandler("reset", reset_command))
     return app
