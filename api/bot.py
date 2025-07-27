@@ -114,7 +114,7 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # --- /ip ---
 async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🌐 Kiểm tra địa chỉ IP của bạn tại:\n👉 https://mphongdev-net.vercel.app/checkip",
+        "🌐 Kiểm tra địa chỉ IP của bạn tại:\n👉 https://mphongdev-net.vercel.app/",
         parse_mode='HTML',
         disable_web_page_preview=True
     )
