@@ -3,14 +3,20 @@ import asyncio
 import datetime
 import concurrent.futures
 import logging
+from collections import defaultdict
 from telegram import Update, Chat
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-from spam_sms import *  # Import tất cả API từ spam_sms1.py
+from spam_sms import *  # Import tất cả các hàm spam từ file spam_sms.py
 
 # Bật logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Ẩn log chi tiết từ httpx và telegram
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("telegram.bot").setLevel(logging.WARNING)
+logging.getLogger("telegram.ext").setLevel(logging.WARNING)
 
 # Lấy TOKEN từ biến môi trường
 TOKEN = os.getenv("TOKEN")
@@ -19,7 +25,7 @@ if not TOKEN:
     exit(1)
 
 # Trạng thái người dùng
-user_stop_flags = {}
+user_stop_flags = defaultdict(bool)
 daily_usage = {}
 DAILY_LIMIT = 1000
 
@@ -39,9 +45,8 @@ def check_daily_limit(user_id, times):
 
 def call_with_log(func, phone):
     try:
-        fake_phone = "$L"  # luôn truyền $L
-        print(f"📨 Gọi {func.__name__}({fake_phone})")
-        func(fake_phone)
+        print(f"📨 Gọi {func.__name__}({phone})")
+        func(phone)
     except Exception as e:
         print(f"❌ Lỗi khi gọi {func.__name__}(): {e}")
 
@@ -58,7 +63,7 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
             count = 0
 
             while count < times:
-                if user_stop_flags.get(user_id, False):
+                if user_stop_flags[user_id]:
                     await context.bot.send_message(
                         chat_id=chat_id,
                         text=f"⛔ <b>{full_name}</b> đã dừng spam. Dùng /spam để tiếp tục.",
@@ -70,6 +75,7 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
                 await asyncio.get_event_loop().run_in_executor(executor, call_with_log, func, phone)
                 index += 1
                 count += 1
+                await asyncio.sleep(0.3)  # delay nhẹ chống overload
 
         await context.bot.send_message(
             chat_id=chat_id,
@@ -95,7 +101,7 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if len(context.args) < 1:
-        await update.message.reply_text("❌ Sai cú pháp.\n👉 /spam $L <số_lần>")
+        await update.message.reply_text("❌ Sai cú pháp.\n👉 /spam <số_điện_thoại> <số_lần>")
         return
 
     try:
@@ -149,11 +155,12 @@ async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML',
         disable_web_page_preview=True
     )
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text(
             "🤖 <b>Bot spam SMS</b>\n"
-            "/spam  &lt;số_lần&gt; — spam SMS\n"
+            "/spam &lt;số_điện_thoại&gt; &lt;số_lần&gt; — spam SMS\n"
             "/stop — dừng spam của bạn\n"
             "/check — kiểm tra số lượt hôm nay\n"
             "/ip — kiểm tra địa chỉ IP\n"
@@ -163,8 +170,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         logger.error(f"Lỗi khi gửi lệnh /start: {e}")
-
-
 
 def create_bot():
     app = ApplicationBuilder().token(TOKEN).build()
