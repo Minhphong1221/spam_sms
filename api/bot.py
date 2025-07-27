@@ -111,7 +111,14 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                    text=f"📊 <b>{update.effective_user.full_name}</b> đã spam {count} lần hôm nay.\n🔋 Còn lại: {remaining} lần.",
                                    parse_mode='HTML')
 
-# --- /start ---
+# --- /ip ---
+async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🌐 Kiểm tra địa chỉ IP của bạn tại:\n👉 https://mphongdev-net.vercel.app/checkip",
+        parse_mode='HTML',
+        disable_web_page_preview=True
+    )
+
 # --- /start ---
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -119,12 +126,11 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/spam &lt;sdt&gt; &lt;lần&gt; — spam SMS\n"
         "/stop — dừng spam của bạn\n"
         "/check — kiểm tra số lượt hôm nay\n"
+        "/ip — kiểm tra địa chỉ IP\n"
         "📅 Giới hạn: 1000 lần/ngày\n"
-        "🌐 Nhấn để kiểm tra IP: https://mphongdev-net.vercel.app/\n"
         "Bot By VŨ MINH PHONG",
         parse_mode='HTML'
     )
-
 
 # --- Chạy bot ---
 if __name__ == "__main__":
@@ -134,9 +140,11 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("spam", spam_command))
     app.add_handler(CommandHandler("stop", stop_command))
     app.add_handler(CommandHandler("check", check_command))
+    app.add_handler(CommandHandler("ip", ip_command))
 
     print("🤖 Bot đang chạy...")
     app.run_polling()
 
 # --- Kết thúc bot ---
     print("🛑 Bot đã dừng.")
+    exit(0)
