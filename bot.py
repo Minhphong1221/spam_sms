@@ -12,6 +12,7 @@ from spam_sms import *  # Import các hàm spam từ spam_sms.py
 # Thiết lập logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)  # Ẩn log httpx Telegram API
 
 # Lấy TOKEN từ biến môi trường
 TOKEN = os.getenv("TOKEN")
@@ -46,7 +47,7 @@ def check_daily_limit(user_id, times):
 
 def call_with_log(func, phone):
     try:
-        print(f"📨 Gọi {func.__name__}({phone})")
+        print(f"📨 Gọi {func.__name__}({phone})")  # ✅ Vẫn hiện tên hàm đang spam
         func(phone)
     except Exception as e:
         print(f"❌ Lỗi khi gọi {func.__name__}(): {e}")
@@ -222,7 +223,7 @@ def create_bot():
     app.add_handler(CommandHandler("reset", reset_command))
     app.add_handler(CommandHandler("id", id_command))
 
-    # ✅ Gợi ý lệnh Telegram (sửa đúng lỗi TypeError)
+    # ✅ Gợi ý lệnh Telegram (set commands)
     async def set_commands(application):
         await application.bot.set_my_commands([
             BotCommand("start", "Bắt đầu bot"),
