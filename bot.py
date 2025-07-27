@@ -2,10 +2,15 @@ import os
 import asyncio
 import datetime
 import concurrent.futures
+import logging
 from telegram import Update, Chat
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-from spam_sms import *  # <-- Import tất cả API từ spam_sms.py
+from spam_sms1 import *  # <-- Import tất cả API từ spam_sms1.py
+
+# --- Bật logging ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # --- Lấy TOKEN từ biến môi trường ---
 TOKEN = os.getenv("TOKEN")
@@ -53,9 +58,12 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
 
             while count < times:
                 if user_stop_flags.get(user_id, False):
-                    await context.bot.send_message(chat_id=chat_id,
-                        text=f"⛔ <b>{full_name}</b> đã dừng spam. Dùng /spam để tiếp tục.",
-                        parse_mode='HTML')
+                    try:
+                        await context.bot.send_message(chat_id=chat_id,
+                            text=f"⛔ <b>{full_name}</b> đã dừng spam. Dùng /spam để tiếp tục.",
+                            parse_mode='HTML')
+                    except Exception as e:
+                        logger.error(f"Lỗi khi gửi tin nhắn dừng spam: {e}")
                     return
 
                 func = SPAM_FUNCTIONS[index % total]
@@ -63,14 +71,20 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
                 index += 1
                 count += 1
 
-        await context.bot.send_message(chat_id=chat_id,
-            text=f"✅ <b>{full_name}</b> đã spam {count}  tới số <b>{phone}</b>.",
-            parse_mode='HTML')
+        try:
+            await context.bot.send_message(chat_id=chat_id,
+                text=f"✅ <b>{full_name}</b> đã spam {count} tới số <b>{phone}</b>.",
+                parse_mode='HTML')
+        except Exception as e:
+            logger.error(f"Lỗi khi gửi tin nhắn hoàn thành: {e}")
 
     except Exception as e:
-        await context.bot.send_message(chat_id=chat_id,
-            text=f"❌ Lỗi: <code>{str(e)}</code>",
-            parse_mode='HTML')
+        try:
+            await context.bot.send_message(chat_id=chat_id,
+                text=f"❌ Lỗi: <code>{str(e)}</code>",
+                parse_mode='HTML')
+        except Exception as e2:
+            logger.error(f"Lỗi khi gửi lỗi nội bộ: {e2}")
 
 async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -83,7 +97,8 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if len(context.args) < 1:
-        await update.message.reply_text("❌ Sai cú pháp.\n👉 /spam <số_điện_thoại> <số_lần>")
+        await update.message.reply_text("❌ Sai cú pháp.
+👉 /spam <số_điện_thoại> <số_lần>")
         return
 
     try:
@@ -91,15 +106,21 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         times = int(context.args[1]) if len(context.args) > 1 else 1
 
         if not check_daily_limit(user_id, times):
-            await context.bot.send_message(chat_id=chat_id,
-                text=f"❌ <b>{full_name}</b> đã vượt giới hạn {DAILY_LIMIT} lần/ngày!",
-                parse_mode='HTML')
+            try:
+                await context.bot.send_message(chat_id=chat_id,
+                    text=f"❌ <b>{full_name}</b> đã vượt giới hạn {DAILY_LIMIT} lần/ngày!",
+                    parse_mode='HTML')
+            except Exception as e:
+                logger.error(f"Lỗi khi gửi thông báo giới hạn: {e}")
             return
 
         user_stop_flags[user_id] = False
-        await context.bot.send_message(chat_id=chat_id,
-            text=f"🚀 <b>{full_name}</b> đang spam số <b>{phone}</b> ({times} lần).",
-            parse_mode='HTML')
+        try:
+            await context.bot.send_message(chat_id=chat_id,
+                text=f"🚀 <b>{full_name}</b> đang spam số <b>{phone}</b> ({times} lần).",
+                parse_mode='HTML')
+        except Exception as e:
+            logger.error(f"Lỗi khi gửi thông báo bắt đầu: {e}")
 
         asyncio.create_task(spam_runner(context, user_id, full_name, phone, times, chat_id))
 
@@ -109,7 +130,10 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_stop_flags[user_id] = True
-    await update.message.reply_text("🛑 Bạn đã dừng spam. Gõ /spam để tiếp tục.", parse_mode='HTML')
+    try:
+        await update.message.reply_text("🛑 Bạn đã dừng spam. Gõ /spam để tiếp tục.", parse_mode='HTML')
+    except Exception as e:
+        logger.error(f"Lỗi khi gửi tin nhắn dừng: {e}")
 
 async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -120,36 +144,51 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     count = user_data['count']
     remaining = DAILY_LIMIT - count
 
-    await context.bot.send_message(chat_id=update.effective_chat.id,
-        text=f"📊 <b>{update.effective_user.full_name}</b> đã spam {count} lần hôm nay.\n🔋 Còn lại: {remaining} lần.",
-        parse_mode='HTML')
+    try:
+        await context.bot.send_message(chat_id=update.effective_chat.id,
+            text=f"📊 <b>{update.effective_user.full_name}</b> đã spam {count} lần hôm nay.
+🔋 Còn lại: {remaining} lần.",
+            parse_mode='HTML')
+    except Exception as e:
+        logger.error(f"Lỗi khi gửi thống kê: {e}")
 
 async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🌐 Kiểm tra địa chỉ IP của bạn tại:\n👉 https://mphongdev-net.vercel.app/",
-        parse_mode='HTML',
-        disable_web_page_preview=True
-    )
+    try:
+        await update.message.reply_text(
+            "🌐 Kiểm tra địa chỉ IP của bạn tại:
+👉 https://mphongdev-net.vercel.app/",
+            parse_mode='HTML',
+            disable_web_page_preview=True
+        )
+    except Exception as e:
+        logger.error(f"Lỗi khi gửi link IP: {e}")
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🤖 <b>Bot spam SMS</b>\n"
-        "/spam <số_điện_thoại> <số_lần> — spam SMS\n"
-        "/stop — dừng spam của bạn\n"
-        "/check — kiểm tra số lượt hôm nay\n"
-        "/ip — kiểm tra địa chỉ IP\n"
-        "📅 Giới hạn: 1000 lần/ngày\n"
-        "Bot By VŨ MINH PHONG",
-        parse_mode='HTML'
-    )
+    try:
+        await update.message.reply_text(
+            "🤖 <b>Bot spam SMS</b>
+"
+            "/spam <số_điện_thoại> <số_lần> — spam SMS
+"
+            "/stop — dừng spam của bạn
+"
+            "/check — kiểm tra số lượt hôm nay
+"
+            "/ip — kiểm tra địa chỉ IP
+"
+            "📅 Giới hạn: 1000 lần/ngày
+"
+            "Bot By VŨ MINH PHONG",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Lỗi khi gửi lệnh /start: {e}")
 
 def create_bot():
     app = ApplicationBuilder().token(TOKEN).build()
-
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("spam", spam_command))
     app.add_handler(CommandHandler("stop", stop_command))
     app.add_handler(CommandHandler("check", check_command))
     app.add_handler(CommandHandler("ip", ip_command))
-
     return app
