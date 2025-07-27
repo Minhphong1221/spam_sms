@@ -177,18 +177,18 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        await update.message.reply_text(
-            "🤖 <b>Bot spam SMS</b>\n"
-            "/spam <số_điện_thoại> <số_lần> — spam SMS\n"
-            "/stop — dừng spam của bạn\n"
-            "/check — kiểm tra số lượt hôm nay\n"
-            "/reset — (admin) reset lượt người dùng (reply tin nhắn)\n"
-            "/ip — kiểm tra địa chỉ IP\n"
-            "📅 Giới hạn: 1000 lần/ngày\n"
-            "Bot By VŨ MINH PHONG",
-            parse_mode='HTML'
-        )
+await update.message.reply_text(
+    "🤖 <b>Bot spam SMS</b>\n"
+    "/spam &lt;số_điện_thoại&gt; &lt;số_lần&gt; — spam SMS\n"
+    "/stop — dừng spam của bạn\n"
+    "/check — kiểm tra số lượt hôm nay\n"
+    "/reset — (admin) reset lượt người dùng (reply tin nhắn)\n"
+    "/ip — kiểm tra địa chỉ IP\n"
+    "📅 Giới hạn: 1000 lần/ngày\n"
+    "Bot By VŨ MINH PHONG",
+    parse_mode='HTML'
+)
+
     except Exception as e:
         logger.error(f"Lỗi khi gửi lệnh /start: {e}")
 
