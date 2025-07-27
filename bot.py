@@ -1,33 +1,27 @@
-import os
-import asyncio
-import datetime
-import concurrent.futures
-import logging
+# ... các import giữ nguyên như cũ ...
 from collections import defaultdict
 from telegram import Update, Chat
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-from spam_sms import *  # Import tất cả các hàm spam từ file spam_sms.py
+from spam_sms import *
 
-# Bật logging
+# Logging và ẩn log không cần thiết
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Ẩn log chi tiết từ httpx và telegram
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("telegram.bot").setLevel(logging.WARNING)
 logging.getLogger("telegram.ext").setLevel(logging.WARNING)
 
-# Lấy TOKEN từ biến môi trường
+# Token từ biến môi trường
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
     print("❌ Thiếu biến môi trường TOKEN. Vui lòng đặt TOKEN vào Railway.")
     exit(1)
 
-# Cấu hình admin
-ADMIN_IDS = [6594643149]  # 👈 Thay 123456789 bằng user_id Telegram của admin
+# 👑 Danh sách ID admin
+ADMIN_IDS = [6594643149]  # ← thay bằng ID admin thật
 
-# Trạng thái người dùng
+# Trạng thái & giới hạn
 user_stop_flags = defaultdict(bool)
 daily_usage = defaultdict(lambda: {'date': str(datetime.date.today()), 'count': 0})
 DAILY_LIMIT = 1000
@@ -38,14 +32,11 @@ def is_group_chat(update):
 def check_daily_limit(user_id, times):
     today = str(datetime.date.today())
     user_data = daily_usage[user_id]
-
     if user_data['date'] != today:
         user_data['date'] = today
         user_data['count'] = 0
-
     if user_data['count'] + times > DAILY_LIMIT:
         return False
-
     user_data['count'] += times
     return True
 
@@ -61,13 +52,11 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
         v for k, v in globals().items()
         if callable(v) and not k.startswith("__") and k.islower()
     ]
-
     try:
         with concurrent.futures.ThreadPoolExecutor() as executor:
             total = len(SPAM_FUNCTIONS)
             index = 0
             count = 0
-
             while count < times:
                 if user_stop_flags[user_id]:
                     await context.bot.send_message(
@@ -76,19 +65,16 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
                         parse_mode='HTML'
                     )
                     return
-
                 func = SPAM_FUNCTIONS[index % total]
                 await asyncio.get_event_loop().run_in_executor(executor, call_with_log, func, phone)
                 index += 1
                 count += 1
                 await asyncio.sleep(0.3)
-
         await context.bot.send_message(
             chat_id=chat_id,
             text=f"✅ <b>{full_name}</b> đã spam {count} lần tới số <b>{phone}</b>.",
             parse_mode='HTML'
         )
-
     except Exception as e:
         await context.bot.send_message(
             chat_id=chat_id,
@@ -144,14 +130,11 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     today = str(datetime.date.today())
     user_data = daily_usage[user_id]
-
     if user_data['date'] != today:
         user_data['date'] = today
         user_data['count'] = 0
-
     count = user_data['count']
     remaining = DAILY_LIMIT - count
-
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=f"📊 <b>{update.effective_user.full_name}</b> đã spam {count} lần hôm nay.\n🔋 Còn lại: {remaining} lần.",
@@ -173,7 +156,7 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not update.message.reply_to_message:
-        await update.message.reply_text("❗ Vui lòng reply tin nhắn của người cần reset.")
+        await update.message.reply_text("❗ Vui lòng reply tin nhắn của người cần reset.", parse_mode='HTML')
         return
 
     target_user = update.message.reply_to_message.from_user
@@ -185,7 +168,7 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }
 
     await update.message.reply_text(
-        f"✅ Đã reset lượt spam cho <b>{target_user.full_name}</b>.",
+        f"✅ Đã reset lượt spam cho <b>{target_user.full_name}</b> ({target_id}).",
         parse_mode='HTML'
     )
 
@@ -212,5 +195,5 @@ def create_bot():
     app.add_handler(CommandHandler("stop", stop_command))
     app.add_handler(CommandHandler("check", check_command))
     app.add_handler(CommandHandler("ip", ip_command))
-    app.add_handler(CommandHandler("reset", reset_command))  # Lệnh admin
+    app.add_handler(CommandHandler("reset", reset_command))  # 👈 Lệnh admin
     return app
