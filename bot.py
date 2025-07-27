@@ -7,25 +7,25 @@ from collections import defaultdict
 from telegram import Update, Chat
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-from spam_sms import *  # Import các hàm spam từ file spam_sms.py
+from spam_sms import *  # Import các hàm spam từ spam_sms.py
 
-# Thiết lập logging
+# Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("telegram.bot").setLevel(logging.WARNING)
 logging.getLogger("telegram.ext").setLevel(logging.WARNING)
 
-# Token từ biến môi trường
+# Token Telegram từ biến môi trường
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
-    print("❌ Thiếu biến môi trường TOKEN. Vui lòng đặt TOKEN vào Railway.")
+    print("❌ Thiếu biến môi trường TOKEN.")
     exit(1)
 
 # 👑 Danh sách ID admin
-ADMIN_IDS = [6594643149]  # Nhập đúng Telegram user ID của bạn
+ADMIN_IDS = [6594643149]
 
-# Trạng thái người dùng & giới hạn spam
+# Giới hạn & trạng thái
 user_stop_flags = defaultdict(bool)
 daily_usage = defaultdict(lambda: {'date': str(datetime.date.today()), 'count': 0})
 DAILY_LIMIT = 1000
@@ -87,7 +87,7 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
             parse_mode='HTML'
         )
 
-# 📲 Lệnh /spam
+# 📲 /spam
 async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
@@ -127,13 +127,13 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except ValueError:
         await update.message.reply_text("❌ Số lần phải là số nguyên.")
 
-# 🛑 Lệnh /stop
+# 🛑 /stop
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_stop_flags[user_id] = True
     await update.message.reply_text("🛑 Bạn đã dừng spam. Gõ /spam để tiếp tục.", parse_mode='HTML')
 
-# 📊 Lệnh /check
+# 📊 /check
 async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     today = str(datetime.date.today())
@@ -149,7 +149,7 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
 
-# 🌐 Lệnh /ip
+# 🌐 /ip
 async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🌐 Kiểm tra địa chỉ IP của bạn tại:\n👉 https://mphongdev-net.vercel.app/",
@@ -157,7 +157,7 @@ async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
-# 🆔 Lệnh /id
+# 🆔 /id
 async def id_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     await update.message.reply_text(
@@ -165,10 +165,9 @@ async def id_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
 
-# 🔁 Lệnh /reset (admin)
+# 🔁 /reset (admin)
 async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admin_id = update.effective_user.id
-
     if int(admin_id) not in ADMIN_IDS:
         await update.message.reply_text("❌ Bạn không có quyền dùng lệnh này.")
         return
@@ -190,12 +189,12 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
 
-# 🚀 Lệnh /start
+# 🚀 /start
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text(
             "🤖 <b>Bot spam SMS</b>\n"
-            "/spam <sdt> <solan> — spam SMS\n"
+            "/spam &lt;số_điện_thoại&gt; &lt;số_lần&gt; — spam SMS\n"
             "/stop — dừng spam của bạn\n"
             "/check — kiểm tra số lượt hôm nay\n"
             "/reset — (admin) reset lượt người dùng (reply tin nhắn)\n"
@@ -208,7 +207,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"Lỗi khi gửi lệnh /start: {e}")
 
-# ✅ Tạo ứng dụng bot
+# ✅ Tạo app bot
 def create_bot():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start_command))
