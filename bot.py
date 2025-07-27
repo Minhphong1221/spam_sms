@@ -153,7 +153,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text(
             "🤖 <b>Bot spam SMS</b>\n"
-            "/spam $L <số_lần> — spam SMS\n"
+            "/spam  &lt;số_lần&gt; — spam SMS\n"
             "/stop — dừng spam của bạn\n"
             "/check — kiểm tra số lượt hôm nay\n"
             "/ip — kiểm tra địa chỉ IP\n"
