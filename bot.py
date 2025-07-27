@@ -1,9 +1,13 @@
-# ... các import giữ nguyên như cũ ...
+import os
+import asyncio
+import datetime
+import concurrent.futures
+import logging  # 🔧 ĐÃ THÊM
 from collections import defaultdict
 from telegram import Update, Chat
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-from spam_sms import *
+from spam_sms import *  # Import tất cả các hàm spam từ file spam_sms.py
 
 # Logging và ẩn log không cần thiết
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +23,7 @@ if not TOKEN:
     exit(1)
 
 # 👑 Danh sách ID admin
-ADMIN_IDS = [6594643149]  # ← thay bằng ID admin thật
+ADMIN_IDS = [6594643149]  # 👈 Đổi ID admin tại đây
 
 # Trạng thái & giới hạn
 user_stop_flags = defaultdict(bool)
@@ -176,7 +180,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text(
             "🤖 <b>Bot spam SMS</b>\n"
-            "/spam &lt;số_điện_thoại&gt; &lt;số_lần&gt; — spam SMS\n"
+            "/spam <số_điện_thoại> <số_lần> — spam SMS\n"
             "/stop — dừng spam của bạn\n"
             "/check — kiểm tra số lượt hôm nay\n"
             "/reset — (admin) reset lượt người dùng (reply tin nhắn)\n"
@@ -195,5 +199,5 @@ def create_bot():
     app.add_handler(CommandHandler("stop", stop_command))
     app.add_handler(CommandHandler("check", check_command))
     app.add_handler(CommandHandler("ip", ip_command))
-    app.add_handler(CommandHandler("reset", reset_command))  # 👈 Lệnh admin
+    app.add_handler(CommandHandler("reset", reset_command))  # 👑 Lệnh dành cho admin
     return app
