@@ -131,12 +131,12 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # === Gửi câu hỏi ngl.link ===
 async def send_ngl_questions(chat_id, context, username, question, sl):
-    url = "https://ngl.link/api/submit"
     user_id = chat_id
     for i in range(sl):
         if ngl_stop_flags[user_id]:
             await context.bot.send_message(chat_id=chat_id, text="⛔ Bạn đã dừng gửi câu hỏi NGL.")
             return
+
         deviceId = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=32))
         headers = {
             'accept': '*/*',
@@ -149,16 +149,16 @@ async def send_ngl_questions(chat_id, context, username, question, sl):
 
         try:
             async with httpx.AsyncClient() as client:
-                res = await client.post(url, data=data, headers=headers, timeout=10)
+                res = await client.post("https://ngl.link/api/submit", data=data, headers=headers, timeout=10)
                 res.raise_for_status()
-                result = res.json()
-             
         except Exception as e:
-            await context.bot.send_message(chat_id=chat_id, text=f"❌ Lỗi gửi lần {i + 1}: {e}")
+       
 
         await asyncio.sleep(random.uniform(0.5, 2.0))
 
+    ngl_stop_flags[user_id] = False  # Reset cờ hiệu sau khi hoàn tất
     await context.bot.send_message(chat_id=chat_id, text=f"🎉 Đã hoàn tất gửi {sl} câu hỏi.")
+
 
 # === NGL các bước ===
 async def ngl_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
