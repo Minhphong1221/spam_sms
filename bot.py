@@ -27,6 +27,7 @@ if not TOKEN:
 ADMIN_IDS = [1087968824]
 DAILY_LIMIT = 1000
 user_stop_flags = defaultdict(bool)
+ngl_stop_flags = defaultdict(bool)
 daily_usage = defaultdict(lambda: {'date': str(datetime.date.today()), 'count': 0})
 
 # === NGL handler state ===
@@ -98,7 +99,11 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
 # === Gửi câu hỏi ngl.link ===
 async def send_ngl_questions(chat_id, context, username, question, sl):
     url = "https://ngl.link/api/submit"
+    user_id = context._user_id_and_data[0]
     for i in range(sl):
+        if ngl_stop_flags[user_id]:
+            await context.bot.send_message(chat_id=chat_id, text="⛔ Bạn đã dừng gửi câu hỏi NGL.")
+            return
         deviceId = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=32))
         headers = {
             'accept': '*/*',
@@ -127,7 +132,7 @@ async def send_ngl_questions(chat_id, context, username, question, sl):
 
 # === NGL các bước ===
 async def ngl_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🧑 Nhập username NGL (ví dụ: johndoe):")
+    await update.message.reply_text("🧑 Nhập username NGL (ví dụ:mphog140906):")
     return ASK_NGL_USER
 
 async def ngl_input_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -150,6 +155,8 @@ async def ngl_input_question(update: Update, context: ContextTypes.DEFAULT_TYPE)
     chat_id = update.effective_chat.id
     ngl_user_data[chat_id]['question'] = update.message.text.strip()
     data = ngl_user_data.pop(chat_id)
+    user_id = update.effective_user.id
+    ngl_stop_flags[user_id] = False
     await update.message.reply_text("🚀 Đang gửi câu hỏi...")
     await send_ngl_questions(chat_id, context, data['username'], data['question'], data['sl'])
     return ConversationHandler.END
@@ -157,6 +164,11 @@ async def ngl_input_question(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def ngl_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("❌ Đã hủy thao tác gửi NGL.")
     return ConversationHandler.END
+
+async def stop_ngl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    ngl_stop_flags[user_id] = True
+    await update.message.reply_text("🛑 Bạn đã dừng gửi câu hỏi NGL.", parse_mode='HTML')
 
 # === Command handlers ===
 async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -257,6 +269,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/spam &lt;sdt&gt; &lt;số_lần&gt; — spam SMS\n"
             "/ngl — gửi câu hỏi ẩn danh ngl.link\n"
             "/stop — dừng spam\n"
+            "/stopngl — dừng gửi ngl\n"
             "/check — xem lượt spam hôm nay\n"
             "/reset — reset lượt spam (admin)\n"
             "/ip — kiểm tra IP\n"
@@ -276,12 +289,12 @@ def create_bot():
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("spam", spam_command))
     app.add_handler(CommandHandler("stop", stop_command))
+    app.add_handler(CommandHandler("stopngl", stop_ngl_command))
     app.add_handler(CommandHandler("check", check_command))
     app.add_handler(CommandHandler("ip", ip_command))
     app.add_handler(CommandHandler("reset", reset_command))
     app.add_handler(CommandHandler("id", id_command))
 
-    # Conversation handler cho NGL
     ngl_conv = ConversationHandler(
         entry_points=[CommandHandler("ngl", ngl_start)],
         states={
@@ -299,6 +312,7 @@ def create_bot():
             BotCommand("spam", "Spam số điện thoại"),
             BotCommand("ngl", "Gửi câu hỏi ẩn danh NGL"),
             BotCommand("stop", "Dừng spam"),
+            BotCommand("stopngl", "Dừng gửi NGL"),
             BotCommand("check", "Kiểm tra số lượt hôm nay"),
             BotCommand("ip", "Kiểm tra địa chỉ IP"),
             BotCommand("id", "Lấy ID Telegram"),
