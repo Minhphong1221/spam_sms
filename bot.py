@@ -57,7 +57,6 @@ def call_with_log(func, phone):
         print(f"❌ Lỗi khi gọi {func.__name__}(): {e}")
 
 # === Spam SMS (từ spam_sms.py) ===
-# Giả lập hàm spam
 from spam_sms import *
 
 async def spam_runner(context, user_id, full_name, phone, times, chat_id):
@@ -99,7 +98,7 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
 # === Gửi câu hỏi ngl.link ===
 async def send_ngl_questions(chat_id, context, username, question, sl):
     url = "https://ngl.link/api/submit"
-    user_id = context._user_id_and_data[0]
+    user_id = context._user_id_and_data[0] if hasattr(context, '_user_id_and_data') else chat_id
     for i in range(sl):
         if ngl_stop_flags[user_id]:
             await context.bot.send_message(chat_id=chat_id, text="⛔ Bạn đã dừng gửi câu hỏi NGL.")
@@ -132,7 +131,7 @@ async def send_ngl_questions(chat_id, context, username, question, sl):
 
 # === NGL các bước ===
 async def ngl_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🧑 Nhập username NGL (ví dụ:mphog140906):")
+    await update.message.reply_text("🧑 Nhập username NGL phía sau link (ví dụ:minhphong140906):")
     return ASK_NGL_USER
 
 async def ngl_input_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -170,50 +169,7 @@ async def stop_ngl_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ngl_stop_flags[user_id] = True
     await update.message.reply_text("🛑 Bạn đã dừng gửi câu hỏi NGL.", parse_mode='HTML')
 
-# === Command handlers ===
-async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    user_id = user.id
-    full_name = user.full_name
-    chat_id = update.effective_chat.id
-
-    if not is_group_chat(update):
-        await update.message.reply_text("⚠️ Bot chỉ dùng trong nhóm.")
-        return
-
-    if len(context.args) < 1:
-        await update.message.reply_text("❌ Sai cú pháp.\n👉 /spam &lt;số_điện_thoại&gt; &lt;số_lần&gt;")
-        return
-
-    try:
-        phone = context.args[0]
-        times = int(context.args[1]) if len(context.args) > 1 else 1
-
-        if not check_daily_limit(user_id, times):
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=f"❌ <b>{full_name}</b> đã vượt giới hạn {DAILY_LIMIT} lần/ngày!",
-                parse_mode='HTML'
-            )
-            return
-
-        user_stop_flags[user_id] = False
-
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=f"🚀 <b>{full_name}</b> đang spam số <b>{phone}</b> ({times} lần).",
-            parse_mode='HTML'
-        )
-
-        asyncio.create_task(spam_runner(context, user_id, full_name, phone, times, chat_id))
-
-    except ValueError:
-        await update.message.reply_text("❌ Số lần phải là số nguyên.")
-
-async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    user_stop_flags[user_id] = True
-    await update.message.reply_text("🛑 Bạn đã dừng spam.", parse_mode='HTML')
+# === Các lệnh khác giữ nguyên ===
 
 async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
