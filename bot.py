@@ -152,7 +152,7 @@ async def send_ngl_questions(chat_id, context, username, question, sl):
                 res = await client.post("https://ngl.link/api/submit", data=data, headers=headers, timeout=10)
                 res.raise_for_status()
         except Exception as e:
-       
+            await context.bot.send_message(chat_id=chat_id, text=f"❌ Lỗi gửi lần {i + 1}: {e}")
 
         await asyncio.sleep(random.uniform(0.5, 2.0))
 
