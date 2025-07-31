@@ -95,10 +95,44 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
             parse_mode='HTML'
         )
 
+async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    full_name = update.effective_user.full_name
+    chat_id = update.effective_chat.id
+    args = context.args
+
+    if len(args) < 2:
+        await update.message.reply_text("❌ Dùng: /spam <số điện thoại> <số lần>")
+        return
+
+    phone = args[0].strip()
+    if not phone.isdigit() or len(phone) < 8:
+        await update.message.reply_text("❌ Số điện thoại không hợp lệ.")
+        return
+
+    try:
+        times = int(args[1])
+    except ValueError:
+        await update.message.reply_text("❌ Số lần spam phải là số.")
+        return
+
+    if not check_daily_limit(user_id, times):
+        await update.message.reply_text(f"❌ Vượt quá giới hạn {DAILY_LIMIT} lần/ngày.")
+        return
+
+    user_stop_flags[user_id] = False
+    await update.message.reply_text("🚀 Bắt đầu spam...")
+    await spam_runner(context, user_id, full_name, phone, times, chat_id)
+
+async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    user_stop_flags[user_id] = True
+    await update.message.reply_text("🛑 Bạn đã dừng spam.", parse_mode='HTML')
+
 # === Gửi câu hỏi ngl.link ===
 async def send_ngl_questions(chat_id, context, username, question, sl):
     url = "https://ngl.link/api/submit"
-    user_id = context._user_id_and_data[0] if hasattr(context, '_user_id_and_data') else chat_id
+    user_id = chat_id
     for i in range(sl):
         if ngl_stop_flags[user_id]:
             await context.bot.send_message(chat_id=chat_id, text="⛔ Bạn đã dừng gửi câu hỏi NGL.")
@@ -239,7 +273,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Lỗi khi gửi lệnh /start: {e}")
 
 # === Khởi tạo bot ===
-def create_bot():
+ef create_bot():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start_command))
@@ -277,5 +311,4 @@ def create_bot():
         ])
 
     app.post_init = set_commands
-
     return app
