@@ -273,7 +273,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Lỗi khi gửi lệnh /start: {e}")
 
 # === Khởi tạo bot ===
-ef create_bot():
+def create_bot():
     app = ApplicationBuilder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start_command))
