@@ -152,10 +152,7 @@ async def send_ngl_questions(chat_id, context, username, question, sl):
                 res = await client.post(url, data=data, headers=headers, timeout=10)
                 res.raise_for_status()
                 result = res.json()
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text=f"✅ Gửi {i + 1}/{sl}: ID {result.get('questionId')} | {result.get('userRegion')}"
-                )
+             
         except Exception as e:
             await context.bot.send_message(chat_id=chat_id, text=f"❌ Lỗi gửi lần {i + 1}: {e}")
 
