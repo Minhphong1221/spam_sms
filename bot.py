@@ -8,7 +8,7 @@ import urllib.parse
 from collections import defaultdict
 
 import httpx
-from telegram import Update, Chat, BotCommand
+from telegram import Update, BotCommand
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, ContextTypes,
     ConversationHandler, MessageHandler, filters
@@ -83,14 +83,14 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
                 await asyncio.sleep(0.3)
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"✅ &lt;{full_name}&gt; đã spam {count} lần đến số &lt;{phone}&gt;.",
-            parse_mode="HTML"
+            text=f"✅ *{full_name}* đã spam `{count}` lần đến số `{phone}`.",
+            parse_mode="MarkdownV2"
         )
     except Exception as e:
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"❌ Lỗi: &lt;{str(e)}&gt;",
-            parse_mode="HTML"
+            text=f"❌ Lỗi: `{str(e)}`",
+            parse_mode="MarkdownV2"
         )
 
 async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -100,7 +100,10 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
 
     if len(args) < 2:
-        await update.message.reply_text("❌ Dùng: /spam &lt;sdt&gt; &lt;số_lần&gt;")
+        await update.message.reply_text(
+            "❌ Dùng: `/spam <sdt> <số_lần>`",
+            parse_mode="MarkdownV2"
+        )
         return
 
     phone = args[0]
@@ -217,17 +220,22 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Đã reset lượt spam cho tất cả người dùng.")
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🤖 &lt;Bot spam SMS + NGL&gt;\n"
-        "/spam &lt;sdt&gt; &lt;số_lần&gt; — spam SMS\n"
-        "/ngl — gửi câu hỏi ẩn danh ngl.link\n"
+    text = (
+        "🤖 *Bot spam SMS + NGL*\n\n"
+        "/spam `<sdt> <số_lần>` — spam SMS\n"
+        "/ngl — gửi câu hỏi ẩn danh [ngl.link](https://ngl.link)\n"
         "/stop — dừng spam\n"
-        "/stopngl — dừng gửi ngl\n"
+        "/stopngl — dừng gửi NGL\n"
         "/check — xem lượt spam hôm nay\n"
         "/reset — reset lượt spam (admin)\n"
-        "/cancel — hủy thao tác đang nhập\n"
-        "📅 Giới hạn: 1000 lần/ngày\n\n"
-        "👨‍💻 &lt;Bot by VŨ MINH PHONG&gt;"
+        "/cancel — hủy thao tác đang nhập\n\n"
+        "📅 *Giới hạn:* 1000 lần/ngày\n\n"
+        "👨‍💻 *Bot by VŨ MINH PHONG*"
+    )
+    await update.message.reply_text(
+        text,
+        parse_mode="MarkdownV2",
+        disable_web_page_preview=True
     )
 
 # === Khởi tạo bot ===
