@@ -31,6 +31,7 @@ DAILY_LIMIT = 1000
 user_stop_flags = defaultdict(bool)
 ngl_stop_flags = defaultdict(bool)
 daily_usage = defaultdict(lambda: {'date': str(datetime.date.today()), 'count': 0})
+spam_tasks = {}
 
 # NGL handler state
 ASK_NGL_USER, ASK_NGL_COUNT, ASK_NGL_QUESTION = range(3)
@@ -72,7 +73,7 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
             count = 0
             while count < times:
                 if user_stop_flags[user_id]:
-                    await context.bot.send_message(chat_id=chat_id, text="⛔️ Bạn đã dừng spam.")
+                    await context.bot.send_message(chat_id=chat_id, text="⛔ Bạn đã dừng spam.")
                     return
                 func = SPAM_FUNCTIONS[index % len(SPAM_FUNCTIONS)]
                 await asyncio.get_event_loop().run_in_executor(executor, call_with_log, func, phone)
@@ -81,13 +82,13 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
                 await asyncio.sleep(0.3)
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"✅ <b>{full_name}</b> đã spam {count} lần đến số <b>{phone}</b>.",
+            text=f"✅ &lt;b&gt;{full_name}&lt;/b&gt; đã spam {count} lần đến số &lt;b&gt;{phone}&lt;/b&gt;.",
             parse_mode='HTML'
         )
     except Exception as e:
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"❌ Lỗi: <code>{str(e)}</code>",
+            text=f"❌ Lỗi: &lt;code&gt;{str(e)}&lt;/code&gt;",
             parse_mode='HTML'
         )
 
@@ -98,7 +99,7 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
 
     if len(args) < 2:
-        await update.message.reply_text("❌ Dùng: /spam &lt;số điện thoại&gt; &lt;số lần&gt;", parse_mode='HTML')
+        await update.message.reply_text("❌ Dùng: /spam &lt;số điện thoại&gt; &lt;số lần&gt;")
         return
 
     phone = args[0]
@@ -118,19 +119,26 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_stop_flags[user_id] = False
     await update.message.reply_text("🚀 Bắt đầu spam...")
-    await spam_runner(context, user_id, full_name, phone, times, chat_id)
+
+    task = asyncio.create_task(spam_runner(context, user_id, full_name, phone, times, chat_id))
+    spam_tasks[user_id] = task
 
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_stop_flags[user_id] = True
-    await update.message.reply_text("🛑 Bạn đã dừng spam.")
+
+    task = spam_tasks.get(user_id)
+    if task and not task.done():
+        task.cancel()
+
+    await update.message.reply_text("🛑 Bạn đã dừng spam.", parse_mode='HTML')
 
 # === NGL ===
 async def send_ngl_questions(chat_id, context, username, question, count):
     user_id = chat_id
     for i in range(count):
         if ngl_stop_flags[user_id]:
-            await context.bot.send_message(chat_id=chat_id, text="⛔️ Bạn đã dừng gửi NGL.")
+            await context.bot.send_message(chat_id=chat_id, text="⛔ Bạn đã dừng gửi NGL.")
             return
         deviceId = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=32))
         headers = {
@@ -199,20 +207,29 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📊 Đã spam {user_data['count']} lần.\n🔋 Còn {DAILY_LIMIT - user_data['count']} lần.",
         parse_mode='HTML'
     )
+
+async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in ADMIN_IDS:
+        await update.message.reply_text("❌ Bạn không có quyền dùng lệnh này.")
+        return
+    daily_usage.clear()
+    await update.message.reply_text("✅ Đã reset lượt spam cho tất cả người dùng.")
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🤖 Bot spam SMS + NGL\n"
-        "/spam <sdt> <số lần> — spam SMS\n"
-        "/ngl — gửi câu hỏi NGL\n"
+        "🤖 &lt;b&gt;Bot spam SMS + NGL&lt;/b&gt;\n"
+        "/spam &lt;sdt&gt; &lt;số_lần&gt; — spam SMS\n"
+        "/ngl — gửi câu hỏi ẩn danh ngl.link\n"
         "/stop — dừng spam\n"
-        "/stopngl — dừng NGL\n"
-        "/check — kiểm tra lượt\n"
-        "/cancel — hủy nhập\n\n"
-        "👨‍💻 Bot By VŨ MINH PHONG",
+        "/stopngl — dừng gửi ngl\n"
+        "/check — xem lượt spam hôm nay\n"
+        "/reset — reset lượt spam (admin)\n"
+        "/cancel — hủy thao tác đang nhập\n"
+        "📅 Giới hạn: 1000 lần/ngày\n\n"
+        "👨‍💻 &lt;b&gt;Bot by VŨ MINH PHONG&lt;/b&gt;",
         parse_mode='HTML'
     )
-
-
 
 # === Khởi tạo bot ===
 def create_bot():
@@ -223,6 +240,7 @@ def create_bot():
     app.add_handler(CommandHandler("stop", stop_command))
     app.add_handler(CommandHandler("stopngl", stop_ngl_command))
     app.add_handler(CommandHandler("check", check_command))
+    app.add_handler(CommandHandler("reset", reset_command))
 
     ngl_conv = ConversationHandler(
         entry_points=[CommandHandler("ngl", ngl_start)],
@@ -243,6 +261,7 @@ def create_bot():
             BotCommand("stop", "Dừng spam"),
             BotCommand("stopngl", "Dừng NGL"),
             BotCommand("check", "Kiểm tra lượt"),
+            BotCommand("reset", "Reset lượt (admin)"),
             BotCommand("cancel", "Hủy nhập")
         ])
         await application.bot.delete_webhook(drop_pending_updates=True)
