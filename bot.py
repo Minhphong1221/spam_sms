@@ -54,9 +54,11 @@ def check_daily_limit(user_id, times):
 
 def call_with_log(func, phone):
     try:
+        print(f"📨 Gọi {func.__name__}({phone})")
         func(phone)
     except Exception as e:
-        print(f"❌ Lỗi {func.__name__}: {e}")
+        print(f"❌ Lỗi khi gọi {func.__name__}(): {e}")
+
 
 # === Import các hàm spam SMS ===
 from spam_sms import *
