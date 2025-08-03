@@ -49,7 +49,7 @@ def check_daily_limit(user_id: int, times: int) -> bool:
 
 def call_with_log(func, phone):
     try:
-        print(f"📨 Gọi {func.__name__}({phone})")
+        print(f"📨 Gọi {func.__name__}(&lt;{phone}&gt;)")
         func(phone)
     except Exception as e:
         print(f"❌ Lỗi khi gọi {func.__name__}(): {e}")
@@ -67,7 +67,7 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             index = 0
             count = 0
-            while count < times:
+            while count &lt; times:
                 if user_stop_flags[user_id]:
                     await context.bot.send_message(chat_id=chat_id, text="⛔ Bạn đã dừng spam.")
                     return
@@ -83,7 +83,7 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
                 await asyncio.sleep(0.3)
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"✅ *{full_name}* đã spam `{count}` lần đến số `{phone}`.",
+            text=f"✅ &lt;{full_name}&gt; đã spam `{count}` lần đến số `{phone}`.",
             parse_mode="MarkdownV2"
         )
     except Exception as e:
@@ -99,9 +99,9 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     args = context.args
 
-    if len(args) < 2:
+    if len(args) &lt; 2:
         await update.message.reply_text(
-            "❌ Dùng: `/spam <sdt> <số_lần>`",
+            "❌ Dùng: `/spam &lt;sdt&gt; &lt;số_lần&gt;`",
             parse_mode="MarkdownV2"
         )
         return
@@ -222,7 +222,7 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         "🤖 *Bot spam SMS + NGL*\n\n"
-        "/spam `<sdt> <số_lần>` — spam SMS\n"
+        "/spam `&lt;sdt&gt; &lt;số_lần&gt;` — spam SMS\n"
         "/ngl — gửi câu hỏi ẩn danh [ngl.link](https://ngl.link)\n"
         "/stop — dừng spam\n"
         "/stopngl — dừng gửi NGL\n"
