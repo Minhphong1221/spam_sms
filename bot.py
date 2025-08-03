@@ -36,32 +36,28 @@ ASK_NGL_USER, ASK_NGL_COUNT, ASK_NGL_QUESTION = range(3)
 ngl_user_data = {}
 
 # === Utility ===
-def is_group_chat(update):
-    return update.effective_chat.type in [Chat.GROUP, Chat.SUPERGROUP]
-
-def check_daily_limit(user_id, times):
+def check_daily_limit(user_id: int, times: int) -> bool:
     today = str(datetime.date.today())
     user_data = daily_usage[user_id]
-    if user_data['date'] != today:
-        user_data['date'] = today
-        user_data['count'] = 0
-    if user_data['count'] + times > DAILY_LIMIT:
+    if user_data["date"] != today:
+        user_data["date"] = today
+        user_data["count"] = 0
+    if user_data["count"] + times > DAILY_LIMIT:
         return False
-    user_data['count'] += times
+    user_data["count"] += times
     return True
 
-def call_with_log(func_and_phone):
-    func, phone = func_and_phone
+def call_with_log(func, phone):
     try:
         print(f"📨 Gọi {func.__name__}({phone})")
         func(phone)
     except Exception as e:
         print(f"❌ Lỗi khi gọi {func.__name__}(): {e}")
 
-# === Import các hàm spam SMS ===
+# === Import spam SMS functions ===
 from spam_sms import *
 
-# === Spam SMS ===
+# === Spam runner ===
 async def spam_runner(context, user_id, full_name, phone, times, chat_id):
     SPAM_FUNCTIONS = [
         v for k, v in globals().items()
@@ -79,7 +75,8 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
                 await asyncio.get_event_loop().run_in_executor(
                     executor,
                     call_with_log,
-                    (func, phone)
+                    func,
+                    phone
                 )
                 index += 1
                 count += 1
@@ -87,13 +84,13 @@ async def spam_runner(context, user_id, full_name, phone, times, chat_id):
         await context.bot.send_message(
             chat_id=chat_id,
             text=f"✅ &lt;{full_name}&gt; đã spam {count} lần đến số &lt;{phone}&gt;.",
-            parse_mode='HTML'
+            parse_mode="HTML"
         )
     except Exception as e:
         await context.bot.send_message(
             chat_id=chat_id,
             text=f"❌ Lỗi: &lt;{str(e)}&gt;",
-            parse_mode='HTML'
+            parse_mode="HTML"
         )
 
 async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -103,7 +100,7 @@ async def spam_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
 
     if len(args) < 2:
-        await update.message.reply_text("❌ Dùng: /spam &lt;số điện thoại&gt; &lt;số lần&gt;")
+        await update.message.reply_text("❌ Dùng: /spam &lt;sdt&gt; &lt;số_lần&gt;")
         return
 
     phone = args[0]
@@ -146,11 +143,11 @@ async def send_ngl_questions(chat_id, context, username, question, count):
             return
         deviceId = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=32))
         headers = {
-            'accept': '*/*',
-            'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
-            'origin': 'https://ngl.link',
-            'referer': f'https://ngl.link/{username}',
-            'x-requested-with': 'XMLHttpRequest'
+            "accept": "*/*",
+            "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "origin": "https://ngl.link",
+            "referer": f"https://ngl.link/{username}",
+            "x-requested-with": "XMLHttpRequest"
         }
         data = f"username={urllib.parse.quote(username)}&question={urllib.parse.quote(question)}&deviceId={deviceId}&gameSlug=&referrer="
         try:
@@ -158,7 +155,7 @@ async def send_ngl_questions(chat_id, context, username, question, count):
                 res = await client.post("https://ngl.link/api/submit", data=data, headers=headers, timeout=10)
                 res.raise_for_status()
         except Exception as e:
-            await context.bot.send_message(chat_id=chat_id, text=f"❌ Lỗi lần {i + 1}: {e}")
+            await context.bot.send_message(chat_id=chat_id, text=f"❌ Lỗi lần {i+1}: {e}")
         await asyncio.sleep(random.uniform(0.5, 1.5))
     await context.bot.send_message(chat_id=chat_id, text=f"✅ Đã gửi {count} câu hỏi.")
 
@@ -168,7 +165,7 @@ async def ngl_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def ngl_input_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    ngl_user_data[chat_id] = {'username': update.message.text.strip()}
+    ngl_user_data[chat_id] = {"username": update.message.text.strip()}
     await update.message.reply_text("🔢 Nhập số lượng câu hỏi:")
     return ASK_NGL_COUNT
 
@@ -178,17 +175,17 @@ async def ngl_input_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not text.isdigit():
         await update.message.reply_text("❌ Vui lòng nhập số.")
         return ASK_NGL_COUNT
-    ngl_user_data[chat_id]['count'] = int(text)
+    ngl_user_data[chat_id]["count"] = int(text)
     await update.message.reply_text("💬 Nhập nội dung câu hỏi:")
     return ASK_NGL_QUESTION
 
 async def ngl_input_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     data = ngl_user_data.pop(chat_id)
-    data['question'] = update.message.text.strip()
+    data["question"] = update.message.text.strip()
     ngl_stop_flags[chat_id] = False
     await update.message.reply_text("🚀 Đang gửi...")
-    await send_ngl_questions(chat_id, context, data['username'], data['question'], data['count'])
+    await send_ngl_questions(chat_id, context, data["username"], data["question"], data["count"])
     return ConversationHandler.END
 
 async def ngl_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -204,9 +201,9 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     today = str(datetime.date.today())
     user_data = daily_usage[user_id]
-    if user_data['date'] != today:
-        user_data['date'] = today
-        user_data['count'] = 0
+    if user_data["date"] != today:
+        user_data["date"] = today
+        user_data["count"] = 0
     await update.message.reply_text(
         f"📊 Đã spam {user_data['count']} lần.\n🔋 Còn {DAILY_LIMIT - user_data['count']} lần."
     )
@@ -264,7 +261,7 @@ def create_bot():
             BotCommand("stopngl", "Dừng NGL"),
             BotCommand("check", "Kiểm tra lượt"),
             BotCommand("reset", "Reset lượt (admin)"),
-            BotCommand("cancel", "Hủy nhập")
+            BotCommand("cancel", "Hủy nhập"),
         ])
         await application.bot.delete_webhook(drop_pending_updates=True)
 
