@@ -273,6 +273,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def create_bot():
     app = ApplicationBuilder().token(TOKEN).build()
 
+    # === Thêm handler ===
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("spam", spam_command))
     app.add_handler(CommandHandler("stop", stop_command))
@@ -282,6 +283,7 @@ def create_bot():
     app.add_handler(CommandHandler("reset", reset_command))
     app.add_handler(CommandHandler("id", id_command))
 
+    # === Conversation handler cho NGL ===
     ngl_conv = ConversationHandler(
         entry_points=[CommandHandler("ngl", ngl_start)],
         states={
@@ -289,11 +291,12 @@ def create_bot():
             ASK_NGL_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, ngl_input_count)],
             ASK_NGL_QUESTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, ngl_input_question)],
         },
-        fallbacks=[CommandHandler("cancel", ngl_cancel)]
+        fallbacks=[CommandHandler("cancel", ngl_cancel)],
     )
     app.add_handler(ngl_conv)
 
-    async def set_commands(application):
+    # === Hàm set command và gỡ webhook ===
+    async def post_init(application):
         await application.bot.set_my_commands([
             BotCommand("start", "Bắt đầu bot"),
             BotCommand("spam", "Spam số điện thoại"),
@@ -304,8 +307,9 @@ def create_bot():
             BotCommand("ip", "Kiểm tra địa chỉ IP"),
             BotCommand("id", "Lấy ID Telegram"),
             BotCommand("reset", "Reset lượt spam (admin)"),
-            BotCommand("cancel", "Hủy nhập khi gửi NGL")
+            BotCommand("cancel", "Hủy nhập khi gửi NGL"),
         ])
+        await application.bot.delete_webhook(drop_pending_updates=True)  # Gỡ webhook để dùng polling
 
-    app.post_init = set_commands
+    app.post_init = post_init
     return app
