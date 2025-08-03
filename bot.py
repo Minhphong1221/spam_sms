@@ -199,20 +199,19 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📊 Đã spam {user_data['count']} lần.\n🔋 Còn {DAILY_LIMIT - user_data['count']} lần.",
         parse_mode='HTML'
     )
-
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🤖 Bot spam SMS + NGL\n"
-        "/spam &lt;sdt&gt; &lt;số lần&gt; — spam SMS\n"
+        "/spam <sdt> <số lần> — spam SMS\n"
         "/ngl — gửi câu hỏi NGL\n"
         "/stop — dừng spam\n"
         "/stopngl — dừng NGL\n"
         "/check — kiểm tra lượt\n"
-        "/cancel — hủy nhập\n"
-        "\nBot By VŨ MINH PHONG",
+        "/cancel — hủy nhập\n\n"
+        "👨‍💻 Bot By VŨ MINH PHONG",
         parse_mode='HTML'
     )
+
 
 
 # === Khởi tạo bot ===
